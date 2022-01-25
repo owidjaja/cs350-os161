@@ -33,7 +33,7 @@ int* read_urandom(int size, int lo, int hi){
     }
     else
     {
-        printf("copying\n");
+        // printf("copying\n");
         int byte_count = 64;
         char data[64];
         fread(&data, 1, byte_count, fp);
@@ -41,16 +41,16 @@ int* read_urandom(int size, int lo, int hi){
         fclose(fp);
         fp = NULL;
 
-        printf("data: %s\n", data);
+        // printf("data: %s\n", data);
 
         // for (int i=0; i<size; i++){
         //     printf("rand data: %d\n", data[i]);
         // }
-        printf("\n");
+        // printf("\n");
 
         int lo = -51;
         int hi = 34;
-        printf("lo=%d, hi=%d\n\n", lo,hi);
+        // printf("lo=%d, hi=%d\n\n", lo,hi);
         // Min + (int)(Math.random() * ((Max - Min) + 1))
         
         int *retval = malloc(size);
@@ -83,32 +83,27 @@ int main(int argc, char **argv){
         }
 
     int n, lo, hi;
-
-    if (isNumber(argv[1])){
-        printf("Works\n");
-    }
-    
     if (isNumber(argv[1]) && isNumber(argv[2]) && isNumber(argv[3])){
         n  = atoi(argv[1]);
         lo = atoi(argv[2]);
         hi = atoi(argv[3]);
     }
     else{
-        printf("INPUT ERROR: parameters not int data type.\n");
+        // printf("INPUT ERROR: parameters not int data type.\n");
         return 1;   // input error retval
     }
 
     if (n<0 || n>INT_MAX || lo<INT_MIN || lo>INT_MAX || hi<INT_MIN || hi>INT_MAX){
-        printf("INPUT ERROR: parameter value exceeded bounds.\n");
+        // printf("INPUT ERROR: parameter value exceeded bounds.\n");
         return 1;   // input error retval
     }
 
-    printf("n=%d, lo=%d, hi=%d\n",n,lo,hi);
+    // printf("n=%d, lo=%d, hi=%d\n",n,lo,hi);
 
-    printf("now working on a0 details.\n");
+    // printf("now working on a0 details.\n");
 
     if (lo>hi) {
-        printf("lo>hi, nothing written\n");
+        // printf("lo>hi, nothing written\n");
         return 0;
     }
 
@@ -116,14 +111,14 @@ int main(int argc, char **argv){
 
     fp = fopen("./log.txt", "w");               // overwrite existing data
     if (fp==NULL){
-        printf("Failed to open file\n");
+        // printf("Failed to open file\n");
         return 0;
     }
 
-    fprintf(fp, "%d", n);
+    fprintf(fp, "%d\n", n);
 
     if (lo==hi){
-        printf("hi==lo\n");
+        // printf("hi==lo\n");
         for (int i=0; i<n; i++){
             fprintf(fp, "\n%d", lo);
         }
@@ -143,11 +138,11 @@ int main(int argc, char **argv){
         }
         else{
             for (int i=0; i<n; i++){
-                printf("rand num: %d\n", rand_num[i]);
+                // printf("rand num: %d\n", rand_num[i]);
             }
             
             for (int i=0; i<n; i++){
-                fprintf(fp, "\n%d", rand_num[i]);
+                fprintf(fp, "%d\n", rand_num[i]);
             }
 
             free(rand_num);
