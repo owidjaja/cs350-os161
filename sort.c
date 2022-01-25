@@ -4,6 +4,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <sys/time.h>
 
 // https://stackoverflow.com/questions/1787996/c-library-function-to-perform-sort
 int compare_function(const void *a,const void *b) {
@@ -45,13 +46,22 @@ int main(){
 
     fclose(fpr);
 
+    struct timeval start, end;
+    gettimeofday(&start, NULL);
 
     // https://stackoverflow.com/questions/1787996/c-library-function-to-perform-sort
     // qsort(<arrayname>,<size>,sizeof(<elementsize>),compare_function);
     qsort(numbers, n, sizeof(*numbers), compare_function);
-    for (int i=0; i<n; i++){
-        printf("numbers[%d] = %d\n", i,numbers[i]);
-    }
+
+    gettimeofday(&end, NULL);
+
+    // for (int i=0; i<n; i++){
+    //     printf("numbers[%d] = %d\n", i,numbers[i]);
+    // }
+    
+    printf("%ld",
+    ((end.tv_sec * 1000000 + end.tv_usec) -
+    (start.tv_sec * 1000000 + start.tv_usec)));
 
     fpw = fopen("./sorted.txt", "w");
     if (fpr==NULL){
