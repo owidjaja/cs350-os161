@@ -21,6 +21,59 @@ bool isNumber(char number[])
     return true;
 }
 
+int* read_urandom(int size, int lo, int hi){
+    FILE *fp;
+
+    fp = fopen("/dev/urandom", "r");
+    if (fp == NULL)
+    {
+        // something went wrong
+        printf("ERROR: failed to read file\n");
+        return NULL;
+    }
+    else
+    {
+        printf("copying\n");
+        int byte_count = 64;
+        char data[64];
+        fread(&data, 1, byte_count, fp);
+        
+        fclose(fp);
+        fp = NULL;
+
+        printf("data: %s\n", data);
+
+        // for (int i=0; i<size; i++){
+        //     printf("rand data: %d\n", data[i]);
+        // }
+        printf("\n");
+
+        int lo = -51;
+        int hi = 34;
+        printf("lo=%d, hi=%d\n\n", lo,hi);
+        // Min + (int)(Math.random() * ((Max - Min) + 1))
+        
+        int *retval = malloc(size);
+        for (int i=0; i<size; i++){
+            // printf("rand data: %d\n", data[i]);
+
+            int inter = (data[i] % ((hi-lo)+1));
+            // printf("bef inter: %d\n", inter);
+            if (inter<0) {
+                // printf("adjust\n");
+                inter += ((hi-lo)+1);
+                }    
+            // printf("inter: %d\n", inter);
+
+            retval[i] = lo + inter;
+            // printf("rand num: %d\n", retval[i]);
+            // printf("\n");
+        }
+        return retval;
+    }
+}
+
+
 // argc: argument count
 // argv: argument vectors
 int main(int argc, char **argv){
@@ -54,8 +107,8 @@ int main(int argc, char **argv){
 
     printf("now working on a0 details.\n");
 
-    if (hi<lo) {
-        printf("hi<lo, nothing written\n");
+    if (lo>hi) {
+        printf("lo>hi, nothing written\n");
         return 0;
     }
 
@@ -69,7 +122,7 @@ int main(int argc, char **argv){
 
     fprintf(fp, "%d", n);
 
-    if (hi==lo){
+    if (lo==hi){
         printf("hi==lo\n");
         for (int i=0; i<n; i++){
             fprintf(fp, "\n%d", lo);
@@ -82,26 +135,25 @@ int main(int argc, char **argv){
     }
 
     // else lo < hi, generate random numbers
+    if (lo<hi){
+        int *rand_num = read_urandom(n, lo, hi);
+        if (rand_num == NULL){
+            // failed
+            return 0;
+        }
+        else{
+            for (int i=0; i<n; i++){
+                printf("rand num: %d\n", rand_num[i]);
+            }
+            
+            for (int i=0; i<n; i++){
+                fprintf(fp, "\n%d", rand_num[i]);
+            }
 
-    
-
-    return 0;
-}
-
-
-ssize_t get_random(int size){
-    int randomData = open("/dev/urandom", 0);
-    if (randomData < 0)
-    {
-        // something went wrong
-    }
-    else
-    {
-        char myRandomData[size];
-        ssize_t result = read(randomData, myRandomData, sizeof myRandomData);
-        if (result < 0)
-        {
-            // something went wrong
+            free(rand_num);
+            if (fp) fclose(fp);
+            fp = NULL;
+            return 0;
         }
     }
 }
