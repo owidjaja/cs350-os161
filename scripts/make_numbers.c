@@ -48,8 +48,6 @@ int* read_urandom(int size, int lo, int hi){
         // }
         // printf("\n");
 
-        int lo = -51;
-        int hi = 34;
         // printf("lo=%d, hi=%d\n\n", lo,hi);
         // Min + (int)(Math.random() * ((Max - Min) + 1))
         
@@ -101,10 +99,11 @@ int main(int argc, char **argv){
     // printf("n=%d, lo=%d, hi=%d\n",n,lo,hi);
 
     // printf("now working on a0 details.\n");
-
+    // printf("here");
     if (lo>hi) {
-        // printf("lo>hi, nothing written\n");
-        return 0;
+        // printf("here2");
+        printf("lo>hi, nothing written\n");
+        return 1;
     }
 
     FILE *fp;

@@ -54,12 +54,12 @@ int main(){
     qsort(numbers, n, sizeof(*numbers), compare_function);
 
     gettimeofday(&end, NULL);
-    
+
     // for (int i=0; i<n; i++){
     //     printf("numbers[%d] = %d\n", i,numbers[i]);
     // }
     
-    printf("Time taken for sort: %ld micro seconds\n",
+    printf("%ld",
     ((end.tv_sec * 1000000 + end.tv_usec) -
     (start.tv_sec * 1000000 + start.tv_usec)));
 
