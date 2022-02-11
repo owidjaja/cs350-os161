@@ -73,7 +73,7 @@ struct semaphore *no_proc_sem;
 
 #if OPT_A1		// a1: 5.1
 static volatile unsigned int pid_count;
-// static struct semaphore *pid_count_mutex;
+static struct semaphore *pid_count_mutex;
 #endif
 
 
