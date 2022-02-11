@@ -1,3 +1,4 @@
+#include "opt-A1.h"
 /*
  * Copyright (c) 2013
  *	The President and Fellows of Harvard College.
@@ -50,6 +51,7 @@
 #include <vfs.h>
 #include <synch.h>
 #include <kern/fcntl.h>  
+#include <kern/limits.h>
 
 /*
  * The process for the kernel; this holds all the kernel-only threads.
@@ -69,6 +71,10 @@ static struct semaphore *proc_count_mutex;
 struct semaphore *no_proc_sem;   
 #endif  // UW
 
+#if OPT_A1		// a1: 5.1
+static volatile unsigned int pid_count;
+// static struct semaphore *pid_count_mutex;
+#endif
 
 
 /*
@@ -208,6 +214,14 @@ proc_bootstrap(void)
     panic("could not create no_proc_sem semaphore\n");
   }
 #endif // UW 
+
+#if OPT_A1		//	a1: 5.1
+  pid_count = __PID_MIN;
+  pid_count_mutex = sem_create("pid_count_mutex",1);
+  if (pid_count_mutex == NULL) {
+    panic("could not create pid_count_mutex semaphore\n");
+  }
+#endif
 }
 
 /*
@@ -272,6 +286,13 @@ proc_create_runprogram(const char *name)
 #endif // UW
 
 	return proc;
+
+#if OPT_A1		// a1: 5.1
+	P(pid_count_mutex);
+	pid_count++;
+	proc->p_pid = pid_count;
+	V(pid_count_mutex);
+#endif
 }
 
 /*

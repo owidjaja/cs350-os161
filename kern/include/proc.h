@@ -1,3 +1,4 @@
+#include "opt-A1.h"
 /*
  * Copyright (c) 2013
  *	The President and Fellows of Harvard College.
@@ -49,15 +50,19 @@ struct semaphore;
  * Process structure.
  */
 struct proc {
-	char *p_name;			/* Name of this process */
-	struct spinlock p_lock;		/* Lock for this structure */
+	#if OPT_A1
+	pid_t p_pid;
+	#endif
+
+	char *p_name;					/* Name of this process */
+	struct spinlock p_lock;			/* Lock for this structure */
 	struct threadarray p_threads;	/* Threads in this process */
 
 	/* VM */
 	struct addrspace *p_addrspace;	/* virtual address space */
 
 	/* VFS */
-	struct vnode *p_cwd;		/* current working directory */
+	struct vnode *p_cwd;			/* current working directory */
 
 #ifdef UW
   /* a vnode to refer to the console device */

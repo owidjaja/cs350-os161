@@ -1,3 +1,5 @@
+#include "opt-A1.h"
+
 #include <types.h>
 #include <kern/errno.h>
 #include <kern/unistd.h>
@@ -53,10 +55,17 @@ void sys__exit(int exitcode) {
 int
 sys_getpid(pid_t *retval)
 {
-  /* for now, this is just a stub that always returns a PID of 1 */
-  /* you need to fix this to make it work properly */
-  *retval = 1;
-  return(0);
+  #if OPT_A1
+    *retval = curproc->p_pid;
+    return (0);
+
+  #else
+    /* for now, this is just a stub that always returns a PID of 1 */
+    /* you need to fix this to make it work properly */
+    *retval = 1;
+    return(0);
+
+  #endif /* OPT_A1 */
 }
 
 /* stub handler for waitpid() system call                */
