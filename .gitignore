@@ -1,6 +1,6 @@
 build/
 defs.mk
-kern/compile/
+kern/compile/ASST0/
 user/bin/cat/.depend
 user/bin/cat/build
 user/bin/cp/.depend
