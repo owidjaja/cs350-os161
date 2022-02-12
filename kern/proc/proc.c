@@ -285,14 +285,14 @@ proc_create_runprogram(const char *name)
 	V(proc_count_mutex);
 #endif // UW
 
-	return proc;
-
 #if OPT_A1		// a1: 5.1
 	P(pid_count_mutex);
 	pid_count++;
 	proc->p_pid = pid_count;
 	V(pid_count_mutex);
 #endif
+
+	return proc;
 }
 
 /*

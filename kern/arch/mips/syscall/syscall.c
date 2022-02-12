@@ -1,3 +1,4 @@
+#include "opt-A1.h"
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
  *	The President and Fellows of Harvard College.
@@ -132,7 +133,13 @@ syscall(struct trapframe *tf)
 #endif // UW
 
 	    /* Add stuff here */
- 
+
+#if OPT_A1
+	case SYS_fork:
+	  sys_fork((pid_t *)&retval, tf);
+	  break;
+#endif
+
 	default:
 	  kprintf("Unknown syscall %d\n", callno);
 	  err = ENOSYS;
@@ -176,8 +183,15 @@ syscall(struct trapframe *tf)
  *
  * Thus, you can trash it and do things another way if you prefer.
  */
+//#if OPT_A1
+//void enter_forked_process(struct trapframe *tf, unsigned long dummy){
+//	(void)tf;
+//	(void)dummy;
+//}
+//#else
 void
 enter_forked_process(struct trapframe *tf)
 {
 	(void)tf;
 }
+//#endif

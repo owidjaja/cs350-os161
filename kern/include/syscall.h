@@ -1,3 +1,4 @@
+#include "opt-A1.h"
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
  *	The President and Fellows of Harvard College.
@@ -44,7 +45,11 @@ void syscall(struct trapframe *tf);
  */
 
 /* Helper for fork(). You write this. */
+//#if OPT_A1
+//void enter_forked_process(struct trapframe *tf, unsigned long dummy);
+//#else
 void enter_forked_process(struct trapframe *tf);
+//#endif
 
 /* Enter user mode. Does not return. */
 void enter_new_process(int argc, userptr_t argv, vaddr_t stackptr,
@@ -65,5 +70,9 @@ int sys_getpid(pid_t *retval);
 int sys_waitpid(pid_t pid, userptr_t status, int options, pid_t *retval);
 
 #endif // UW
+
+#if OPT_A1
+int sys_fork(pid_t *retval, struct trapframe *tf);
+#endif
 
 #endif /* _SYSCALL_H_ */

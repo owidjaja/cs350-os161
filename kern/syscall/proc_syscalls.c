@@ -101,3 +101,27 @@ sys_waitpid(pid_t pid,
   return(0);
 }
 
+#include <mips/trapframe.h>
+#if OPT_A1	// a1: 5.2
+int sys_fork(pid_t *retval, struct trapframe *parent_tf){
+	// create child process
+	struct proc *child_proc = proc_create_runprogram("child");
+	if (child_proc == NULL) { return ENOMEM; }
+
+	// copy address space
+	int ac_err = as_copy(curproc_getas(), &(child_proc->p_addrspace));
+	if (ac_err != 0) { return ac_err; }
+
+	// create new trapframe for child, and copy parent tf contents
+	struct trapframe *child_tf = kmalloc(sizeof(struct trapframe));
+	*child_tf = *parent_tf;
+	
+	// create thread
+//	int th_fork_err = thread_fork("child_thread", child_proc, enter_forked_process, child_tf, 0);
+//	if (th_fork_err != 0) { return th_fork_err; }
+
+	(void)retval;
+	
+	return 0;
+}
+#endif
