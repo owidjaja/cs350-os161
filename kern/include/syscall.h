@@ -45,11 +45,12 @@ void syscall(struct trapframe *tf);
  */
 
 /* Helper for fork(). You write this. */
-//#if OPT_A1
-//void enter_forked_process(struct trapframe *tf, unsigned long dummy);
-//#else
+
+#if OPT_A1		// a1: 5.2 modify prototype to match thread_fork call signature
+void enter_forked_process(void *tf, unsigned long dummy);
+#else
 void enter_forked_process(struct trapframe *tf);
-//#endif
+#endif
 
 /* Enter user mode. Does not return. */
 void enter_new_process(int argc, userptr_t argv, vaddr_t stackptr,

@@ -11,6 +11,8 @@
 #include <thread.h>
 #include <addrspace.h>
 #include <copyinout.h>
+#include <mips/trapframe.h>
+#include <clock.h>
 
   /* this implementation of sys__exit does not do anything with the exit code */
   /* this needs to be fixed to get exit() and waitpid() working properly */
@@ -101,12 +103,15 @@ sys_waitpid(pid_t pid,
   return(0);
 }
 
-#include <mips/trapframe.h>
 #if OPT_A1	// a1: 5.2
 int sys_fork(pid_t *retval, struct trapframe *parent_tf){
+
 	// create child process
 	struct proc *child_proc = proc_create_runprogram("child");
 	if (child_proc == NULL) { return ENOMEM; }
+
+  // for parent to return child pid
+  *retval = child_proc->p_pid;
 
 	// copy address space
 	int ac_err = as_copy(curproc_getas(), &(child_proc->p_addrspace));
@@ -117,11 +122,10 @@ int sys_fork(pid_t *retval, struct trapframe *parent_tf){
 	*child_tf = *parent_tf;
 	
 	// create thread
-//	int th_fork_err = thread_fork("child_thread", child_proc, enter_forked_process, child_tf, 0);
-//	if (th_fork_err != 0) { return th_fork_err; }
+  int th_fork_err = thread_fork("child_thread", child_proc, enter_forked_process, child_tf, 0);
+	if (th_fork_err != 0) { return th_fork_err; }
 
-	(void)retval;
-	
+  clocksleep(1);
 	return 0;
 }
 #endif
