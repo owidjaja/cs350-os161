@@ -87,7 +87,7 @@ struct proc {
 	//
 	int p_exitcode;
 
-	// 1 for running, 0 for exited
+	// 0 for running, 1 for exited
 	int p_exitstatus;
 #endif
 

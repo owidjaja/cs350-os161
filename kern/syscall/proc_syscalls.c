@@ -45,7 +45,7 @@ for (unsigned int i=0; i<array_num(p->p_children); i++){
   array_remove(p->p_children, i);
   
   spinlock_acquire(&temp_child->p_lock);
-  if (temp_child->p_exitstatus == 0){
+  if (temp_child->p_exitstatus == 1){
     // exited
     spinlock_release(&temp_child->p_lock);
     proc_destroy(temp_child);
@@ -63,10 +63,10 @@ for (unsigned int i=0; i<array_num(p->p_children); i++){
   /* note: curproc cannot be used after this call */
   proc_remthread(curthread);
 
-#if OPT_A1    // a1: 5.3.2
+#if OPT_A1    // a1 - 5.3.2: monitor parent from child
   spinlock_acquire(&p->p_lock);         // synchronization lock access
   if (p->p_parent!= NULL){  // parent still running
-    p->p_exitstatus = 0;                // mark p as exited
+    p->p_exitstatus = 1;                // mark p as exited
     p->p_exitcode = exitcode;
     spinlock_release(&p->p_lock);
   }
@@ -125,8 +125,48 @@ sys_waitpid(pid_t pid,
   if (options != 0) {
     return(EINVAL);
   }
+
+#if OPT_A1    // a1 - 5.4: waitpid
+  struct proc *p = curproc;
+  struct proc *this_cp = NULL;
+  struct proc *temp_child = NULL;
+
+  for (unsigned int i=0; i<array_num(p->p_children); i++){
+    this_cp = array_get(p->p_children, i);
+    if (this_cp->p_pid == pid){
+      // found child_proc
+        temp_child = this_cp;
+        array_remove(p->p_children, i);
+        break;
+    }
+  }
+
+  if (temp_child == NULL){
+    // child pid not found
+    // missing passing exit code to exitstatus, which passes to userptr_t status
+    *retval = -1;
+    return ESRCH;
+  }
+
+  // busy polling, provided by instructions
+  // breaks if temp_child->p_exitstatus == 1 (exited)
+  spinlock_acquire (&temp_child ->p_lock);
+  while (!temp_child ->p_exitstatus) {
+    spinlock_release (&temp_child ->p_lock);
+    clocksleep (1);
+    spinlock_acquire (&temp_child ->p_lock);
+  }
+  spinlock_release (&temp_child ->p_lock);
+
+  // temporary pass to _MKWAIT_EXIT in a1
+  exitstatus = _MKWAIT_EXIT(temp_child->p_exitcode);
+  proc_destroy(temp_child);
+
+#else
   /* for now, just pretend the exitstatus is 0 */
   exitstatus = 0;
+#endif
+
   result = copyout((void *)&exitstatus,status,sizeof(int));
   if (result) {
     return(result);
@@ -137,16 +177,17 @@ sys_waitpid(pid_t pid,
 
 #if OPT_A1	// a1: 5.2
 int sys_fork(pid_t *retval, struct trapframe *parent_tf){
+  struct proc *p = curproc;
 
 	// create child process
 	struct proc *child_proc = proc_create_runprogram("child");
 	if (child_proc == NULL) { return ENOMEM; }
 
   // a1: 5.3.1
-  child_proc->p_parent = curproc;
+  child_proc->p_parent = p;
 
   // a1: 5.3.3
-  int add_err = array_add(curproc->p_children, child_proc, NULL); // index_ret pointer set to NULL
+  int add_err = array_add(p->p_children, child_proc, NULL); // index_ret pointer set to NULL
   if (add_err) { return add_err; }
 
   // for parent to return child pid
