@@ -109,6 +109,13 @@ proc_create(const char *name)
 	proc->console = NULL;
 #endif // UW
 
+#if OPT_A1		// a1: 5.3.1, have not check for appropriate exit codes, status
+	proc->p_children = array_create();
+	proc->p_parent = NULL;
+	proc->p_exitcode = 0;
+	proc->p_exitstatus = 1;		// init as running
+#endif
+
 	return proc;
 }
 
@@ -142,6 +149,9 @@ proc_destroy(struct proc *proc)
 		proc->p_cwd = NULL;
 	}
 
+#if OPT_A1		// a1: 5.3.1, array_destroy assume contents are empty, but we have not checked
+	array_destroy(proc->p_children);
+#endif
 
 #ifndef UW  // in the UW version, space destruction occurs in sys_exit, not here
 	if (proc->p_addrspace) {

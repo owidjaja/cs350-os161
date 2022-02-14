@@ -39,14 +39,46 @@ void sys__exit(int exitcode) {
   as = curproc_setas(NULL);
   as_destroy(as);
 
+#if OPT_A1    // a1 - 5.3.3: monitoring child proc from parent
+for (unsigned int i=0; i<array_num(p->p_children); i++){
+  struct proc *temp_child = array_get(p->p_children, i);
+  array_remove(p->p_children, i);
+  
+  spinlock_acquire(&temp_child->p_lock);
+  if (temp_child->p_exitstatus == 0){
+    // exited
+    spinlock_release(&temp_child->p_lock);
+    proc_destroy(temp_child);
+  }
+  else{
+    // running
+    temp_child->p_parent = NULL;
+    spinlock_release(&temp_child->p_lock);
+  }
+}
+
+#endif
+
   /* detach this thread from its process */
   /* note: curproc cannot be used after this call */
   proc_remthread(curthread);
 
+#if OPT_A1    // a1: 5.3.2
+  spinlock_acquire(&p->p_lock);         // synchronization lock access
+  if (p->p_parent!= NULL){  // parent still running
+    p->p_exitstatus = 0;                // mark p as exited
+    p->p_exitcode = exitcode;
+    spinlock_release(&p->p_lock);
+  }
+  else{                                 // parent exited
+    spinlock_release(&p->p_lock);
+    proc_destroy(p);
+  }
+#else
   /* if this is the last user process in the system, proc_destroy()
      will wake up the kernel menu thread */
   proc_destroy(p);
-  
+#endif
   thread_exit();
   /* thread_exit() does not return, so we should never get here */
   panic("return from thread_exit in sys_exit\n");
@@ -110,6 +142,13 @@ int sys_fork(pid_t *retval, struct trapframe *parent_tf){
 	struct proc *child_proc = proc_create_runprogram("child");
 	if (child_proc == NULL) { return ENOMEM; }
 
+  // a1: 5.3.1
+  child_proc->p_parent = curproc;
+
+  // a1: 5.3.3
+  int add_err = array_add(curproc->p_children, child_proc, NULL); // index_ret pointer set to NULL
+  if (add_err) { return add_err; }
+
   // for parent to return child pid
   *retval = child_proc->p_pid;
 
@@ -120,8 +159,10 @@ int sys_fork(pid_t *retval, struct trapframe *parent_tf){
 	// create new trapframe for child, and copy parent tf contents
 	struct trapframe *child_tf = kmalloc(sizeof(struct trapframe));
 	*child_tf = *parent_tf;
-	
+
 	// create thread
+  // on having ampersand & in function pointer parameter
+  // https://stackoverflow.com/questions/16917043/do-function-pointers-need-an-ampersand
   int th_fork_err = thread_fork("child_thread", child_proc, enter_forked_process, child_tf, 0);
 	if (th_fork_err != 0) { return th_fork_err; }
 

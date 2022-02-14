@@ -40,6 +40,10 @@
 #include <spinlock.h>
 #include <thread.h> /* required for struct threadarray */
 
+#if OPT_A1
+#include <array.h>
+#endif
+
 struct addrspace;
 struct vnode;
 #ifdef UW
@@ -50,9 +54,6 @@ struct semaphore;
  * Process structure.
  */
 struct proc {
-	#if OPT_A1
-	pid_t p_pid;
-	#endif
 
 	char *p_name;					/* Name of this process */
 	struct spinlock p_lock;			/* Lock for this structure */
@@ -74,6 +75,22 @@ struct proc {
 #endif
 
 	/* add more material here as needed */
+	
+#if OPT_A1
+	pid_t p_pid;
+
+	// a1: 5.3.1 modify proc struct for _exit, use <array.h>
+	struct array *p_children;
+	
+	struct proc *p_parent;
+
+	//
+	int p_exitcode;
+
+	// 1 for running, 0 for exited
+	int p_exitstatus;
+#endif
+
 };
 
 /* This is the process structure for the kernel and for kernel-only threads. */
