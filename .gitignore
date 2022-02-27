@@ -5,3 +5,5 @@ user/bin/cat/.depend
 user/bin/cat/build
 user/bin/cp/.depend
 .vscode/
+*.o
+*.out
