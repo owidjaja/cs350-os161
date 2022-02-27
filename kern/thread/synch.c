@@ -1,3 +1,5 @@
+#include "opt-A1.h"
+
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
  *	The President and Fellows of Harvard College.
@@ -164,6 +166,18 @@ lock_create(const char *name)
         }
         
         // add stuff here as needed
+#if OPT_A1      // 3.1: implementing wchan, spinlocks from sem_create 
+        lock->lk_wchan = wchan_create(lock->lk_name);
+        if (lock->lk_wchan == NULL){
+                kfree(lock->lk_wchan);
+                kfree(lock);
+                return NULL;
+        }
+
+        lock->lk_owner = NULL;
+        lock->lk_held = false;
+        spinlock_init(&lock->lk_spnlk);
+#endif
         
         return lock;
 }
@@ -174,7 +188,13 @@ lock_destroy(struct lock *lock)
         KASSERT(lock != NULL);
 
         // add stuff here as needed
-        
+#if OPT_A1
+        spinlock_cleanup(&lock->lk_spnlk);
+        if (lock->lk_wchan != NULL){
+                wchan_destroy(lock->lk_wchan);
+        }
+#endif
+
         kfree(lock->lk_name);
         kfree(lock);
 }
@@ -183,26 +203,58 @@ void
 lock_acquire(struct lock *lock)
 {
         // Write this
+#if OPT_A1
+        KASSERT(lock != NULL);
+        KASSERT(curthread->t_in_interrupt == false);
+        KASSERT(lock_do_i_hold(lock) == false);   // don't already own lock
+        
+        spinlock_acquire(&lock->lk_spnlk);
+        while (lock->lk_held){
+                wchan_lock(lock->lk_wchan);
+                spinlock_release(&lock->lk_spnlk);
+                wchan_sleep(lock->lk_wchan);
+                spinlock_acquire(&lock->lk_spnlk);
+        }
 
+        lock->lk_held = true;
+        lock->lk_owner = curthread;
+        spinlock_release(&lock->lk_spnlk);
+#else
         (void)lock;  // suppress warning until code gets written
+#endif
 }
 
 void
 lock_release(struct lock *lock)
 {
         // Write this
+#if OPT_A1
+        KASSERT(lock != NULL);
+        KASSERT(lock_do_i_hold(lock) == true);
+        
+        spinlock_acquire(&lock->lk_spnlk);
+        lock->lk_owner = NULL;
+        lock->lk_held = false;
+        wchan_wakeone(lock->lk_wchan);
+        spinlock_release(&lock->lk_spnlk);
 
+#else
         (void)lock;  // suppress warning until code gets written
+#endif
 }
 
 bool
 lock_do_i_hold(struct lock *lock)
 {
         // Write this
-
+#if OPT_A1
+        KASSERT(lock != NULL);
+        if (curthread == lock->lk_owner) { return true; }
+        else                             { return false;}
+#else
         (void)lock;  // suppress warning until code gets written
-
         return true; // dummy until code gets written
+#endif
 }
 
 ////////////////////////////////////////////////////////////

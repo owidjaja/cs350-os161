@@ -1,3 +1,5 @@
+#include "opt-A1.h"
+
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
  *	The President and Fellows of Harvard College.
@@ -76,6 +78,13 @@ struct lock {
         char *lk_name;
         // add what you need here
         // (don't forget to mark things volatile as needed)
+
+#if OPT_A1      // 3.1: implementing locks
+        struct thread *lk_owner;
+        bool lk_held;
+        struct wchan *lk_wchan;
+        struct spinlock lk_spnlk;
+#endif
 };
 
 struct lock *lock_create(const char *name);
