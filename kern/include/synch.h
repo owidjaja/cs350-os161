@@ -124,6 +124,9 @@ struct cv {
         char *cv_name;
         // add what you need here
         // (don't forget to mark things volatile as needed)
+#if OPT_A1      // a2 - 3.2
+        struct wchan *cv_wchan;
+#endif
 };
 
 struct cv *cv_create(const char *name);
