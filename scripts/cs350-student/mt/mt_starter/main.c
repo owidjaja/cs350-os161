@@ -19,15 +19,14 @@
 #define DELIMITER " \t\n"
 
 void throw_err(const char *errmsg){
-	// perror(errmsg);
-	// const char error_message[30] = "An error has occured \n";
-	// write(STDERR_FILENO, error_message, strlen(error_message));
-	// exit(1);
+	// perror(errmsg);		// uncomment to see written printf error msgs
+	const char error_message[30] = "An error has occured \n";
+	write(STDERR_FILENO, error_message, strlen(error_message));
+	exit(1);
 }
 
-int parse_input(char **sh_argv, FILE *line){
-	char cmdline[MAX_CMD_LEN];
-	fgets(cmdline, MAX_CMD_LEN, line);
+// parses cmdline into tokens in sh_argv
+int tokenize_input(char *cmdline, char **sh_argv){
 
 	int sh_argc = 0;
 	char *token = strtok(cmdline, DELIMITER);
@@ -54,7 +53,9 @@ int sh_num_builtins(){
 }
 
 int sh_cd(char **argv){
-	chdir(argv[1]);
+	if (chdir(argv[1]) != 0){
+		throw_err("chdir");
+	}
 	return 0;
 }
 
@@ -112,7 +113,9 @@ int doexec(int sh_argc, char **sh_argv){
 			throw_err("fork");
 			break;
 		case 0:
-			return execvp(sh_argv[0], sh_argv);
+			if (execvp(sh_argv[0], sh_argv) == -1){
+				throw_err("execvp, invalid cmd");
+			}
 		default:
 			if (!is_background){
 				waitpid(pid, NULL, 0); break;
@@ -124,14 +127,32 @@ int doexec(int sh_argc, char **sh_argv){
 
 
 int main( int argc, char ** argv ){
+	char cmdline[MAX_CMD_LEN];
 	char *sh_argv[MAX_SH_ARG];
 
-	for (int status = 0; status != -1; status=0){
-		printf("> ");
-		int sh_argc = parse_input(sh_argv, stdin);
-		doexec(sh_argc, sh_argv);
+	switch(argc){
+		case 1:
+			for (int status = 0; status != -1; status=0){
+				printf("> ");
+				fgets(cmdline, MAX_CMD_LEN, stdin);
+				int sh_argc = tokenize_input(cmdline, sh_argv);
+				doexec(sh_argc, sh_argv);
+			}
+			break;
+		case 2:
+			;
+			FILE *file_ptr = fopen(argv[1], "r");
+			while (fgets(cmdline, MAX_CMD_LEN, file_ptr)){
+				write(STDOUT_FILENO, cmdline, strlen(cmdline));
+				int sh_argc = tokenize_input(cmdline, sh_argv);
+				doexec(sh_argc, sh_argv);
+			}
+			break;
+		default:
+			throw_err("Usage: ./myshell [batchFile]");
+			break;
 	}
 
-	throw_err("outside main loop");
+	// throw_err("outside main loop");
 	return 0;
 }
