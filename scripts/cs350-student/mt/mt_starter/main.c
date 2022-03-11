@@ -16,12 +16,18 @@
 
 #define MAX_CMD_LEN 512
 #define MAX_SH_ARG 64
-
 #define DELIMITER " \t\n"
+
+void throw_err(const char *errmsg){
+	// perror(errmsg);
+	// const char error_message[30] = "An error has occured \n";
+	// write(STDERR_FILENO, error_message, strlen(error_message));
+	// exit(1);
+}
+
 void parse_input(char **sh_argv, FILE *line){
 	char cmdline[MAX_CMD_LEN];
 	fgets(cmdline, MAX_CMD_LEN, line);
-	// system(cmdline);
 
 	int sh_argc = 0;
 	char *token = strtok(cmdline, DELIMITER);
@@ -30,38 +36,92 @@ void parse_input(char **sh_argv, FILE *line){
 		token = strtok(NULL, DELIMITER);
 	}
 	sh_argv[sh_argc] = NULL;
-
-	// printf("DEB debug\n");
-	// for (int i=0; i<sh_argc; i++){
-	// 	printf("DEB sh_arvg[%d]: %s\n", i, sh_argv[i]);
-	// }
 }
 
-void doexec(char **sh_argv){
-	execvp(sh_argv[0], sh_argv);
-	// perror("execvp error");				// should never reach here
-	exit(1);
+// Section for built-in commands
+
+char *sh_builtin[]={
+	"cd",
+	"pwd",
+	"wait",
+	"exit",
+	"help"
+};
+
+int sh_num_builtins(){
+	return (sizeof(sh_builtin) / sizeof(char *));
 }
+
+int sh_cd(char **argv){
+	chdir(argv[1]);
+	return 0;
+}
+
+int sh_pwd(){
+	char cwd[1024];
+    getcwd(cwd, sizeof(cwd));
+    printf("%s\n", cwd);
+	return 0;
+}
+
+int sh_wait(){
+	// pending background jobs
+	return 0;
+}
+
+int sh_exit(){
+	exit(0);
+}
+
+int sh_help(){
+	for (int i=0; i<sh_num_builtins(); i++){
+		printf("%s\n", sh_builtin[i]);
+	}
+	return 0;
+}
+
+int (*sh_builtin_func[]) (char **) = {
+	&sh_cd,
+	&sh_pwd,
+	&sh_wait,
+	&sh_exit,
+	&sh_help
+};
+
+// End section
+
+int doexec(char **sh_argv){
+	for (int i=0; i<sh_num_builtins(); i++){
+		if (strcmp(sh_argv[0], sh_builtin[i]) == 0){
+			return (*sh_builtin_func[i])(sh_argv);
+			}
+	}
+
+	// if not built-in
+	pid_t pid = fork();
+	switch(pid){
+		case -1:
+			throw_err("fork");
+			break;
+		case 0:
+			return execvp(sh_argv[0], sh_argv);
+		default:
+			waitpid(pid, NULL, 0); break;
+	}
+
+	return -1;
+}
+
 
 int main( int argc, char ** argv ){
 	char *sh_argv[MAX_SH_ARG];
 
-	for (;;){
+	for (int status = 0; status != -1;){
 		printf("> ");
 		parse_input(sh_argv, stdin);
-
-		pid_t pid = fork();
-		switch(pid){
-			case -1:
-				// perror("fork");
-				break;
-			case 0:
-				doexec(sh_argv);
-			default:
-				waitpid(pid, NULL, 0); break;
-		}
-
+		doexec(sh_argv);
 	}
 
+	throw_err("outside main loop");
 	return 0;
 }
