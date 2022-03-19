@@ -1,0 +1,28 @@
+====== test_public.log ======
+>SPLIT<
+>TEST=a2q1.py<
+>Program Output<
+Test: article (20), seed (66), thread (4) passes
+Test: article (20), seed (21), thread (8) passes
+Test: article (30), seed (59), thread (4) passes
+Test: article (30), seed (27), thread (8) passes
+Test: article (40), seed (44), thread (4) passes
+Test: article (40), seed (71), thread (8) passes
+Total Score is as follows: 6/6
+>SPLIT<
+>TEST=a2q2.py<
+>Program Output<
+Test: consumers (10), producers (5), ratio (4) passes
+Test: consumers (10), producers (10), ratio (4) passes
+Test: consumers (20), producers (5), ratio (4) passes
+Test: consumers (20), producers (10), ratio (4) passes
+Total Score is as follows: 6/6
+====== compile.log ======
+rm -f main.o map.o a.out
+gcc -g -c -Wall main.c
+gcc -g -c -Wall map.c
+gcc -g main.o map.o -o a.out -pthread
+rm -f assignment.o orderme.o a.out
+gcc -g -c -Wall assignment.c
+gcc -g -c -Wall orderme.c
+gcc -g assignment.o orderme.o -o a.out -pthread
