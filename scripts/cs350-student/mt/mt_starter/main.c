@@ -18,12 +18,14 @@
 #define MAX_SH_ARG 64
 #define DELIMITER " \t\n"
 
+const char *NEWLINE_CHAR = "\n";
+
 int throw_err(const char *errmsg){
 	// perror(errmsg);		// uncomment to see written printf error msgs
-	const char error_message[30] = "An error has occured \n";
+	const char error_message[30] = "An error has occurred\n";
 	write(STDERR_FILENO, error_message, strlen(error_message));
 
-	// choose one
+	// only one executed
 	exit(1);
 	return -1;
 }
@@ -69,7 +71,8 @@ int sh_cd(char **argv){
 int sh_pwd(){
 	char cwd[1024];
     getcwd(cwd, sizeof(cwd));
-	write(STDOUT_FILENO, cwd, 1024);
+	write(STDOUT_FILENO, cwd, strlen(cwd));
+	write(STDOUT_FILENO, NEWLINE_CHAR, strlen(NEWLINE_CHAR));
 	return 0;
 }
 
@@ -85,7 +88,8 @@ int sh_exit(){
 
 int sh_help(){
 	for (int i=0; i<sh_num_builtins(); i++){
-		printf("%s\n", sh_builtin[i]);
+		write(STDOUT_FILENO, sh_builtin[i], strlen(sh_builtin[i]));
+		write(STDOUT_FILENO, NEWLINE_CHAR, strlen(NEWLINE_CHAR));
 	}
 	return 0;
 }
@@ -121,7 +125,7 @@ int doexec(int sh_argc, char **sh_argv){
 			break;
 		case 0:
 			if (execvp(sh_argv[0], sh_argv) == -1){
-				write(STDOUT_FILENO, "execvp\n", 10);
+				// should never reach here
 				return throw_err("execvp, invalid cmd");
 			}
 		default:
@@ -137,23 +141,25 @@ int doexec(int sh_argc, char **sh_argv){
 int main( int argc, char ** argv ){
 	char cmdline[MAX_CMD_LEN];
 	char *sh_argv[MAX_SH_ARG];
+	const char *prompt = "> ";
 
 	switch(argc){
 		case 1:
-			printf("Interactive mode\n");
+			// printf("Interactive mode\n");
 			for (int status = 0; status != -1;){
-				write(STDOUT_FILENO, "> ", 3);
-				fgets(cmdline, MAX_CMD_LEN, stdin);
+				write(STDOUT_FILENO, prompt, strlen(prompt));
+				if (fgets(cmdline, MAX_CMD_LEN, stdin) == NULL){
+					break;
+				}
 				int sh_argc = tokenize_input(cmdline, sh_argv);
 				status = doexec(sh_argc, sh_argv);
-				// printf("main status = %d\n", status);
 			}
 			break;
 		case 2:
 			;
-			printf("Batch mode\n");
+			// printf("Batch mode\n");
 			FILE *file_ptr = fopen(argv[1], "r");
-			while (fgets(cmdline, MAX_CMD_LEN, file_ptr)){
+			while (fgets(cmdline, MAX_CMD_LEN, file_ptr) != NULL){
 				// write(STDOUT_FILENO, cmdline, strlen(cmdline));
 				int sh_argc = tokenize_input(cmdline, sh_argv);
 				
@@ -168,6 +174,6 @@ int main( int argc, char ** argv ){
 			break;
 	}
 
-	throw_err("exit status");
+	// throw_err("exit status");
 	return 0;
 }
