@@ -1,6 +1,5 @@
 build/
 kern/compile/
-root/hostbin
 defs.mk
 user/bin/cat/.depend
 user/bin/cat/build
