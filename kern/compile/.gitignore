@@ -1,0 +1,6 @@
+# https://stackoverflow.com/questions/115983/how-can-i-add-a-blank-directory-to-a-git-repository?noredirect=1&lq=1
+# Placeholder to record directory but not its files
+# Ignore everything in this directory
+*
+# Except this file
+!.gitignore
