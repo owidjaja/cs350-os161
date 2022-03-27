@@ -1,3 +1,4 @@
+#include "opt-A3.h"
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
  *	The President and Fellows of Harvard College.
@@ -45,6 +46,10 @@
 #include <syscall.h>
 #include <test.h>
 
+#if OPT_A3
+#include <copyinout.h>
+#endif
+
 /*
  * Load program "progname" and start running it in usermode.
  * Does not return except on error.
@@ -52,7 +57,11 @@
  * Calls vfs_open on progname and thus may destroy it.
  */
 int
+#if OPT_A3
+runprogram(char *progname, int nargs, char **args)
+#else
 runprogram(char *progname)
+#endif
 {
 	struct addrspace *as;
 	struct vnode *v;
@@ -97,6 +106,48 @@ runprogram(char *progname)
 		return result;
 	}
 
+	kprintf("[A3] executing my code..\n\n");
+#if OPT_A3		// a3: 4.2
+
+	// get argv: array of addresses of arguments
+	char **argv;
+	size_t argv_memsize = (nargs + 1) * sizeof(userptr_t);
+    argv = kmalloc(argv_memsize);
+    
+	for (int i=0; i<nargs; i++){
+		// int j = i*sizeof(char *);
+		argv[i] = (char *) argcopy_out(&stackptr, args[i]);
+	}	
+	argv[nargs] = NULL;
+
+	kprintf("[A3] handle argv\n");
+	kprintf("[A3] old stackptr: 0x%08x = %u\n", stackptr, stackptr);
+
+	// rounding stackptr to multiple of 4
+	stackptr -= (stackptr % 4);
+	kprintf("[A3] rou stackptr: 0x%08x = %u\n", stackptr, stackptr);
+	
+	stackptr -= (nargs + 1)*sizeof(userptr_t);
+	kprintf("[A3] new stackptr: 0x%08x = %u\n", stackptr, stackptr);
+	kprintf("[A3] sizeof(argv): 0x%08x = %u\n", argv_memsize, argv_memsize);
+
+	int err = copyout(argv, (userptr_t) stackptr, argv_memsize);
+	if (err){
+		return err;
+	}
+
+	kfree(argv);
+	
+	kprintf("[A3] reached enter_new_process\n");
+	kprintf("[A3] fin stackptr: 0x%08x = %u\n\n", stackptr, stackptr);
+	/* Warp to user mode. */
+	enter_new_process(nargs, (userptr_t) stackptr, stackptr, entrypoint);
+	
+	/* enter_new_process does not return. */
+	panic("enter_new_process returned\n");
+	return EINVAL;
+
+#else
 	/* Warp to user mode. */
 	enter_new_process(0 /*argc*/, NULL /*userspace addr of argv*/,
 			  stackptr, entrypoint);
@@ -104,5 +155,28 @@ runprogram(char *progname)
 	/* enter_new_process does not return. */
 	panic("enter_new_process returned\n");
 	return EINVAL;
+#endif
 }
 
+#if OPT_A3		// a3: 4.2
+userptr_t argcopy_out(vaddr_t *stackptr, char *strcopy_out){
+	kprintf("[A3] in argcopy_out ..\n");
+	kprintf("[A3] strcopy_out: '%s'\n", strcopy_out);
+	kprintf("[A3] old stackptr: 0x%08x\n", *stackptr);
+	// for each argument in argv[]
+	size_t len = strlen(strcopy_out) + 1;
+	*stackptr -= len;
+	kprintf("[A3] new stackptr: 0x%08x\n", *stackptr);
+
+	size_t *got;
+	// userptr_t temp_ptr = (userptr_t) (stackptr);
+	// kprintf("[A3] init userptr: 0x%08x\n", (vaddr_t) temp_ptr);
+
+	int gotlen = copyoutstr(strcopy_out, (userptr_t) *stackptr, sizeof(strcopy_out), got);
+	(void) gotlen;
+	
+	// kprintf("[A3] rtrn userptr: 0x%08x\n", (vaddr_t) temp_ptr);
+	kprintf("[A3] ret stackptr: 0x%08x\n\n", *stackptr);
+	return (userptr_t) stackptr;
+}
+#endif

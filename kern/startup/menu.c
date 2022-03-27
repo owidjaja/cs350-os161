@@ -1,3 +1,4 @@
+#include "opt-A3.h"
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
  *	The President and Fellows of Harvard College.
@@ -93,16 +94,23 @@ cmd_progthread(void *ptr, unsigned long nargs)
 
 	KASSERT(nargs >= 1);
 
+#if OPT_A3
+#else
 	if (nargs > 2) {
 		kprintf("Warning: argument passing from menu not supported\n");
 	}
+#endif
 
 	/* Hope we fit. */
 	KASSERT(strlen(args[0]) < sizeof(progname));
 
 	strcpy(progname, args[0]);
 
+#if OPT_A3
+	result = runprogram(progname, nargs, args);
+#else
 	result = runprogram(progname);
+#endif
 	if (result) {
 		kprintf("Running program %s failed: %s\n", args[0],
 			strerror(result));

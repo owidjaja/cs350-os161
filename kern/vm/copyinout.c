@@ -117,6 +117,7 @@ static
 int
 copycheck(const_userptr_t userptr, size_t len, size_t *stoplen)
 {
+	kprintf("[A3] in copycheck..\n");
 	vaddr_t bot, top;
 
 	*stoplen = len;
@@ -126,11 +127,14 @@ copycheck(const_userptr_t userptr, size_t len, size_t *stoplen)
 
 	if (top < bot) {
 		/* addresses wrapped around */
+		kprintf("[A3] copycheck err: top < bot\n");
 		return EFAULT;
 	}
 
 	if (bot >= USERSPACETOP) {
 		/* region is within the kernel */
+		kprintf("[A3] copycheck ERR: bot >= USERSPACETOP\n");
+		kprintf("[A3] ERR bot stackptr: 0x%08x\n\n", bot);
 		return EFAULT;
 	}
 
@@ -188,6 +192,7 @@ copyin(const_userptr_t usersrc, void *dest, size_t len)
 int
 copyout(const void *src, userptr_t userdest, size_t len)
 {
+	kprintf("[A3] in copyout..\n");
 	int result;
 	size_t stoplen;
 
@@ -195,8 +200,10 @@ copyout(const void *src, userptr_t userdest, size_t len)
 	if (result) {
 		return result;
 	}
+	kprintf("[A3] copyout copycheck ok\n");
 	if (stoplen != len) {
 		/* Single block, can't legally truncate it. */
+		kprintf("[A3] copyout err:stoplen\n");
 		return EFAULT;
 	}
 
