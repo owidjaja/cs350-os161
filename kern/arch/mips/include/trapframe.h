@@ -47,8 +47,8 @@ struct trapframe {
 	uint32_t tf_at;		/* Saved register 1 (AT) */
 	uint32_t tf_v0;		/* Saved register 2 (v0) */
 	uint32_t tf_v1;		/* etc. */
-	uint32_t tf_a0;
-	uint32_t tf_a1;
+	uint32_t tf_a0;		/* piazza@1068: program name */
+	uint32_t tf_a1;		/* piazza@1068: list of args */
 	uint32_t tf_a2;
 	uint32_t tf_a3;
 	uint32_t tf_t0;

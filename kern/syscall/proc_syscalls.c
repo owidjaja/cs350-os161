@@ -1,4 +1,5 @@
 #include "opt-A1.h"
+#include "opt-A3.h"
 
 #include <types.h>
 #include <kern/errno.h>
@@ -40,9 +41,13 @@ void sys__exit(int exitcode) {
   as_destroy(as);
 
 #if OPT_A1    // a1 - 5.3.3: monitoring child proc from parent
-for (unsigned int i=0; i<array_num(p->p_children); i++){
-  struct proc *temp_child = array_get(p->p_children, i);
-  array_remove(p->p_children, i);
+unsigned int num_child = array_num(p->p_children);
+// kprintf("[a1] num_child=%d\n", num_child);
+for (unsigned int i=0; i<num_child; i++){
+	// kprintf("[a1] index =%d\n", i);
+	// kprintf("[a1] a->num=%d\n", array_num(p->p_children));
+  struct proc *temp_child = array_get(p->p_children, 0);
+  array_remove(p->p_children, 0);
   
   spinlock_acquire(&temp_child->p_lock);
   if (temp_child->p_exitstatus == 1){
@@ -106,21 +111,12 @@ sys_getpid(pid_t *retval)
 
 int
 sys_waitpid(pid_t pid,
-	    userptr_t status,
-	    int options,
-	    pid_t *retval)
+	          userptr_t status,
+	          int options,
+	          pid_t *retval)
 {
   int exitstatus;
   int result;
-
-  /* this is just a stub implementation that always reports an
-     exit status of 0, regardless of the actual exit status of
-     the specified process.   
-     In fact, this will return 0 even if the specified process
-     is still running, and even if it never existed in the first place.
-
-     Fix this!
-  */
 
   if (options != 0) {
     return(EINVAL);
@@ -131,12 +127,13 @@ sys_waitpid(pid_t pid,
   struct proc *this_cp = NULL;
   struct proc *temp_child = NULL;
 
-  for (unsigned int i=0; i<array_num(p->p_children); i++){
-    this_cp = array_get(p->p_children, i);
+	unsigned int num_child = array_num(p->p_children);
+  for (unsigned int i=0; i<num_child; i++){
+    this_cp = array_get(p->p_children, 0);
     if (this_cp->p_pid == pid){
       // found child_proc
         temp_child = this_cp;
-        array_remove(p->p_children, i);
+        array_remove(p->p_children, 0);
         break;
     }
   }
@@ -163,6 +160,15 @@ sys_waitpid(pid_t pid,
   proc_destroy(temp_child);
 
 #else
+  /* this is just a stub implementation that always reports an
+     exit status of 0, regardless of the actual exit status of
+     the specified process.   
+     In fact, this will return 0 even if the specified process
+     is still running, and even if it never existed in the first place.
+
+     Fix this!
+  */
+
   /* for now, just pretend the exitstatus is 0 */
   exitstatus = 0;
 #endif
@@ -210,4 +216,140 @@ int sys_fork(pid_t *retval, struct trapframe *parent_tf){
   clocksleep(1);
 	return 0;
 }
+#endif
+
+#if OPT_A3    // 5: implementing execv
+#include <kern/fcntl.h>
+#include <vfs.h>
+#include <test.h>
+#define MAXARGS    16
+#define MAXARGSIZE 128
+
+int sys_execv(char *progname, char **tf_argv){
+  struct addrspace *as;
+	struct vnode *v;
+	vaddr_t entrypoint, stackptr;
+	int result;
+
+	/* Open the file. */
+	result = vfs_open(progname, O_RDONLY, 0, &v);
+	if (result) {
+		return result;
+	}
+
+	// kprintf("[a3] args_alloc\n");
+  char **kern_args = args_alloc();
+
+  // kprintf("[a3] start argcopy_in\n");
+  unsigned int nargs = argcopy_in(kern_args, tf_argv);
+  // kprintf("[a3] finish argcopy_in\n");
+	
+	// for (unsigned int i=0; i<nargs; i++){
+  //   kprintf("[a3] kern_args[%d]: '%s'\n", i, kern_args[i]);
+	// }
+
+  // kprintf("[a3] create new address space\n");
+	/* Create a new address space. */
+	as = as_create();
+	if (as ==NULL) {
+		vfs_close(v);
+		return ENOMEM;
+	}
+
+	struct addrspace *old_as = curproc_getas();
+  // kprintf("[a3] switch and activate\n");
+	/* Switch to it and activate it. */
+	curproc_setas(as);
+	as_activate();
+  as_destroy(old_as);
+
+	/* Load the executable. */
+	result = load_elf(v, &entrypoint);
+	if (result) {
+		/* p_addrspace will go away when curproc is destroyed */
+		vfs_close(v);
+		return result;
+	}
+
+	/* Done with the file now. */
+	vfs_close(v);
+
+	/* Define the user stack in the address space */
+	result = as_define_stack(as, &stackptr);
+	if (result) {
+		/* p_addrspace will go away when curproc is destroyed */
+		return result;
+	}
+
+
+  // my code
+
+	// get argv: array of addresses of arguments
+	char **argv;
+	size_t argv_memsize = (nargs + 1) * sizeof(userptr_t);
+  argv = kmalloc(argv_memsize);
+    
+	for (unsigned int i=0; i<nargs; i++){
+		argv[i] = (char *) argcopy_out(&stackptr, kern_args[i]);
+	}	
+	argv[nargs] = NULL;
+
+
+  // copy out argv array into space above stack
+	stackptr -= (stackptr % 4);
+	stackptr -= (nargs + 1)*sizeof(userptr_t);
+	int err = copyout(argv, (userptr_t) stackptr, argv_memsize);
+	if (err){
+		return err;
+	}
+	kfree(argv);
+	args_free(kern_args);
+
+	
+	/* Warp to user mode. */
+	enter_new_process(nargs, (userptr_t) stackptr, stackptr, entrypoint);
+	
+	/* enter_new_process does not return. */
+	panic("enter_new_process returned\n");
+	return EINVAL;
+}
+
+char **args_alloc(){
+  char **args;
+  args = (char **) kmalloc((MAXARGS+1) * sizeof(char *));
+
+  for (int i=0; i<MAXARGS; i++){
+    args[i] = (char *) kmalloc((MAXARGSIZE+1) * sizeof(char));
+  }
+  args[MAXARGS] = NULL;
+
+  return args;
+}
+
+void args_free(char **args){
+  for (int i=0; i<MAXARGS; i++){
+    kfree(args[i]);
+  }
+  kfree(args);
+}
+
+// accepts a dynamically allocated array of buffers,
+// sequentially copies in command line arguments from userspace using copyinstr, 
+// and returns the total
+// number of strings copied in. Hint: The array in userspace is NULL terminated
+int argcopy_in(char **kern_args, char **user_argv){
+  size_t got;
+	unsigned int argc = 0;
+  for (; argc<MAXARGS; argc++){
+    // kprintf("[a3] user_argv[%d]: '%s'\n", argc, user_argv[argc]);
+		if (user_argv[argc] == NULL){
+			break;
+		}
+    copyinstr((userptr_t) user_argv[argc], kern_args[argc], 128, &got);
+  }
+
+  return argc;
+}
+
+
 #endif

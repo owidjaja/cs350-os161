@@ -1,4 +1,5 @@
 #include "opt-A1.h"
+#include "opt-A3.h"
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
  *	The President and Fellows of Harvard College.
@@ -137,6 +138,12 @@ syscall(struct trapframe *tf)
 #if OPT_A1
 	case SYS_fork:		// SYS_fork = 0
 	  err = sys_fork((pid_t *)&retval, tf);
+	  break;
+#endif
+
+#if OPT_A3		// a3: 5
+	case SYS_execv:
+	  err = sys_execv((char *)tf->tf_a0, (char **)tf->tf_a1);
 	  break;
 #endif
 

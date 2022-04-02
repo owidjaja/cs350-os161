@@ -115,7 +115,6 @@ runprogram(char *progname)
     argv = kmalloc(argv_memsize);
     
 	for (unsigned int i=0; i<nargs; i++){
-		// int j = i*sizeof(char *);
 		argv[i] = (char *) argcopy_out(&stackptr, args[i]);
 	}	
 	argv[nargs] = NULL;
@@ -131,6 +130,7 @@ runprogram(char *progname)
 	// kprintf("[A3] new stackptr: 0x%08x = %u\n", stackptr, stackptr);
 	// kprintf("[A3] sizeof(argv): 0x%08x = %u\n", argv_memsize, argv_memsize);
 
+	// copy out argv array into space above stack
 	int err = copyout(argv, (userptr_t) stackptr, argv_memsize);
 	if (err){
 		return err;
@@ -172,7 +172,7 @@ userptr_t argcopy_out(vaddr_t *stackptr, char *strcopy_out){
 	// userptr_t temp_ptr = (userptr_t) (stackptr);
 	// kprintf("[A3] init userptr: 0x%08x\n", (vaddr_t) temp_ptr);
 
-	int gotlen = copyoutstr(strcopy_out, (userptr_t) *stackptr, sizeof(strcopy_out), got);
+	int gotlen = copyoutstr(strcopy_out, (userptr_t) *stackptr, len, got);
 	(void) gotlen;
 	
 	// kprintf("[A3] rtrn userptr: 0x%08x\n", (vaddr_t) temp_ptr);
