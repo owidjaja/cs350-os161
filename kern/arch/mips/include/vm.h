@@ -1,3 +1,4 @@
+#include "opt-A3.h"
 /*
  * Copyright (c) 2000, 2001, 2002, 2003, 2004, 2005, 2008, 2009
  *	The President and Fellows of Harvard College.
@@ -66,6 +67,11 @@
  * a valid address, and will make a *huge* mess if you scribble on it.
  */
 #define PADDR_TO_KVADDR(paddr) ((paddr)+MIPS_KSEG0)
+
+#if OPT_A3
+// opposite of PADDR_TO_KVADDR, for use in freekpages(kvaddr) into putppages(paddr)
+#define KVADDR_TO_PADDR(kvaddr) ((kvaddr)-MIPS_KSEG0)
+#endif
 
 /*
  * The top of user space. (Actually, the address immediately above the

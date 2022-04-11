@@ -39,8 +39,10 @@
 #include <addrspace.h>
 #include <vm.h>
 
-#if OPT_A3		// 6: for ability to call sys__exit() directly
-#include <syscall.h>
+#if OPT_A3		// 6
+#include <syscall.h>	// for ability to call sys__exit() directly
+
+#define ALLOC_POISON -1
 #endif
 
 /*
@@ -59,7 +61,15 @@ static struct spinlock stealmem_lock = SPINLOCK_INITIALIZER;
 void
 vm_bootstrap(void)
 {
+#if OPT_A3
+	kprintf("[a3] in vm_bootstrap\n");
+	paddr_t lo, hi;
+	ram_getsize(&lo, &hi);
+	kprintf("[a3] lo=%d, hi=%d\n", lo, hi);
+
+#else
 	/* Do nothing. */
+#endif
 }
 
 static
@@ -88,6 +98,18 @@ alloc_kpages(int npages)
 	return PADDR_TO_KVADDR(pa);
 }
 
+#if OPT_A3		// 7: physical page allocater, to handle memory once proc terminates
+static void 
+putppages(paddr_t paddr){
+	(void) paddr;
+}
+
+void 
+free_kpages(vaddr_t addr){
+	putppages(KVADDR_TO_PADDR(addr));
+}
+
+#else
 void 
 free_kpages(vaddr_t addr)
 {
@@ -95,6 +117,7 @@ free_kpages(vaddr_t addr)
 
 	(void)addr;
 }
+#endif
 
 void
 vm_tlbshootdown_all(void)
@@ -243,7 +266,7 @@ vm_fault(int faulttype, vaddr_t faultaddress)
 			continue;
 		}
 		ehi = faultaddress;
-		elo = paddr | TLBLO_DIRTY | TLBLO_VALID;
+		elo = paddr | TLBLO_DIRTY | TLBLO_VALIDall;
 		DEBUG(DB_VM, "dumbvm: 0x%x -> 0x%x\n", faultaddress, paddr);
 		tlb_write(ehi, elo, i);
 		splx(spl);
@@ -281,6 +304,12 @@ as_create(void)
 void
 as_destroy(struct addrspace *as)
 {
+#if OPT_A3
+	putppages(as->as_pbase1);
+	putppages(as->as_pbase2);
+	putppages(as->as_stackpbase);
+
+#endif
 	kfree(as);
 }
 
