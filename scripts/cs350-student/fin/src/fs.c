@@ -207,7 +207,6 @@ bool fs_mount(FileSystem *fs, Disk *disk)
                 disk_read(disk, this_indirect, indirect_block.Data);
                 for (unsigned int k=0; k<POINTERS_PER_BLOCK; k++){
                     if (indirect_block.Pointers[k]){
-                        printf(" %d", indirect_block.Pointers[k]);
                         fs->block_bitmap[indirect_block.Pointers[k]] = 1;
                     }
                 }
@@ -255,18 +254,34 @@ ssize_t fs_create(FileSystem *fs)
 
 bool find_inode(FileSystem *fs, size_t inumber, Inode *inode)
 {
+    // make a shallow copy of Inode in disk
+
+    int blocknum = inumber/INODES_PER_BLOCK + 1;
+    if ((inumber < 0) | (inumber > fs->super.Inodes) | (blocknum > (fs->super.InodeBlocks+1))){
+        // printf("err inumber\n");
+        return false;
+    }
+
+    Block block;
+    disk_read(fs->disk, blocknum, block.Data);
+    *inode = block.Inodes[inumber - (blocknum-1)*128];
+
+    if (inode->Valid == 0){
+        // printf("in find_inode invalid\n");
+        return false;
+    }
+    
     return true;
 }
 
 bool store_inode(FileSystem *fs, size_t inumber, Inode *inode)
 {
-    return true;
-}
+    // perform shallow copy on Inode structure, 
+    // which is ok since Inode struct does not have pointers, but defined array size
+    // https://stackoverflow.com/questions/2241699/
 
-// Remove inode ----------------------------------------------------------------
+    // inefficient read, but tricky workaround
 
-bool fs_remove(FileSystem *fs, size_t inumber)
-{
     int blocknum = inumber/INODES_PER_BLOCK + 1;
     if ((inumber > fs->super.Inodes) | (blocknum > (fs->super.InodeBlocks+1))){
         // printf("err inumber\n");
@@ -274,29 +289,34 @@ bool fs_remove(FileSystem *fs, size_t inumber)
     }
 
     Block block;
-
-    // Load inode information
     disk_read(fs->disk, blocknum, block.Data);
-    Inode *found_inode = &block.Inodes[inumber - (blocknum-1)*128];
 
-    if (found_inode->Valid == 0){
-        // invalid
-        // printf("err invalid inode\n");
+    block.Inodes[inumber - (blocknum-1)*128] = *inode;
+    disk_write(fs->disk, blocknum, block.Data);
+
+    return true;
+}
+
+// Remove inode ----------------------------------------------------------------
+
+bool fs_remove(FileSystem *fs, size_t inumber)
+{
+    Inode found_inode;
+    if (find_inode(fs, inumber, &found_inode) == false){
         return false;
     }
 
     // Free direct blocks
     for (unsigned int i=0; i<POINTERS_PER_INODE; i++){
-        uint32_t *this_ptr = &found_inode->Direct[i];
+        uint32_t *this_ptr = &found_inode.Direct[i];
         if (*this_ptr != 0){
             *this_ptr = 0;
             fs->block_bitmap[*this_ptr] = 0;
         }
     }
 
-    // Free indirect blocks
-    // only one indirect block
-    uint32_t this_indirect = found_inode->Indirect;
+    // Free indirect blocks, me: only one indirect block
+    uint32_t this_indirect = found_inode.Indirect;
     if (this_indirect){
         Block indirect_block;
         disk_read(fs->disk, this_indirect, indirect_block.Data);
@@ -313,8 +333,8 @@ bool fs_remove(FileSystem *fs, size_t inumber)
     }
 
     // Clear inode in inode table
-    found_inode->Valid = 0;
-    disk_write(fs->disk, blocknum, block.Data);
+    found_inode.Valid = 0;
+    store_inode(fs, inumber, &found_inode);
 
     return true;
 }
@@ -324,7 +344,12 @@ bool fs_remove(FileSystem *fs, size_t inumber)
 ssize_t fs_stat(FileSystem *fs, size_t inumber)
 {
     // Load inode information
-    return 0;
+    Inode found_inode;
+    if (find_inode(fs, inumber, &found_inode) == false){
+        return -1;
+    }
+
+    return found_inode.Size;
 }
 
 // Read from inode -------------------------------------------------------------

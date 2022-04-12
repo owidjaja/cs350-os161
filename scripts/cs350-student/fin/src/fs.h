@@ -63,5 +63,5 @@ ssize_t fs_read(FileSystem *fs, size_t inumber, char *data, size_t length, size_
 ssize_t fs_write(FileSystem *fs, size_t inumber, char *data, size_t length, size_t offset);
 
 // helper functions
-bool find_inode(FileSystem *fs, size_t inumber, Inode *inode);
+bool find_inode (FileSystem *fs, size_t inumber, Inode *inode);
 bool store_inode(FileSystem *fs, size_t inumber, Inode *inode);
