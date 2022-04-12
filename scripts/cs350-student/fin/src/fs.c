@@ -32,7 +32,7 @@ void fs_debug(Disk *disk)
 
     if (magic_num != MAGIC_NUMBER)
     {
-        printf("Magic number is valid: %c\n", magic_num);
+        printf("Magic number is invalid: %c\n", magic_num);
         return;
     }
 
@@ -46,17 +46,54 @@ void fs_debug(Disk *disk)
 
     if (expected_num_inodeBlocks != num_inodeBlocks)
     {
-        printf("SuperBlock declairs %u InodeBlocks but expect %u InodeBlocks!\n", num_inodeBlocks, expected_num_inodeBlocks);
+        printf("SuperBlock declairs %u InodeBlocks but expect %u InodeBlocks!\n", \
+                                    num_inodeBlocks, expected_num_inodeBlocks);
     }
 
     uint32_t expect_num_inodes = num_inodeBlocks * INODES_PER_BLOCK;
     if (expect_num_inodes != num_inodes)
     {
-        printf("SuperBlock declairs %u Inodes but expect %u Inodes!\n", num_inodes, expect_num_inodes);
+        printf("SuperBlock declairs %u Inodes but expect %u Inodes!\n", \
+                                    num_inodes, expect_num_inodes);
     }
 
     // FIXME: Read Inode blocks
+    for (unsigned int i=0; i<num_inodeBlocks; i++){
+        // printf("\ninode block %d\n", i);
+        disk_read(disk, i+1, block.Data);
+        
+        for (unsigned int j=0; j<INODES_PER_BLOCK; j++){
+            Inode this_inode = block.Inodes[j];
+            if (this_inode.Valid == 0){
+                continue;
+            }
 
+            printf("Inode %d:\n", i*INODES_PER_BLOCK+j);
+            printf("    size: %d bytes\n", this_inode.Size);
+            
+            printf("    direct blocks:");
+            for (unsigned int k=0; k<POINTERS_PER_INODE; k++){
+                if (this_inode.Direct[k]){
+                    printf(" %d", this_inode.Direct[k]);
+                }
+            }
+            printf("\n");
+
+            uint32_t this_indirect = this_inode.Indirect;
+            if (this_indirect){
+                Block indirect_block;
+                printf("    indirect block: %d\n", this_indirect);
+                printf("    indirect data blocks:");
+                disk_read(disk, this_indirect, indirect_block.Data);
+                for (unsigned int k=0; k<POINTERS_PER_BLOCK; k++){
+                    if (indirect_block.Pointers[k]){
+                        printf(" %d", indirect_block.Pointers[k]);
+                    }
+                }
+                printf("\n");
+            }
+        }
+    }
 }
 
 // Format file system ----------------------------------------------------------
@@ -64,9 +101,19 @@ void fs_debug(Disk *disk)
 bool fs_format(Disk *disk)
 {
     // Write superblock
+    Block new_super;
+    new_super.Super.MagicNumber = MAGIC_NUMBER;
+    new_super.Super.Blocks      = disk_size(disk);
+    new_super.Super.InodeBlocks = round((float)new_super.Super.Blocks / 10);
+    new_super.Super.Inodes      = new_super.Super.InodeBlocks * INODES_PER_BLOCK;
+    
+    disk_write(disk, 0, new_super.Data);
 
     // Clear all other blocks
-
+    // for (unsigned int i=1; i<new_super.Super.Blocks; i++){
+    //     disk_
+    // }
+    return true;
     return false;
 }
 
