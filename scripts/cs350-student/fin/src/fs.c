@@ -100,6 +100,10 @@ void fs_debug(Disk *disk)
 
 bool fs_format(Disk *disk)
 {
+    if (disk_mounted(disk)){
+        return false;
+    }
+
     // Write superblock
     Block new_super;
     new_super.Super.MagicNumber = MAGIC_NUMBER;
@@ -109,12 +113,28 @@ bool fs_format(Disk *disk)
     
     disk_write(disk, 0, new_super.Data);
 
-    // Clear all other blocks
-    // for (unsigned int i=1; i<new_super.Super.Blocks; i++){
-    //     disk_
-    // }
+    // Reset inode table
+    for (unsigned int i=0; i<new_super.Super.InodeBlocks; i++){
+        // printf("\non inode block %d\n", i);
+        Block new_inodeblock;
+
+        for (unsigned int j=0; j<INODES_PER_BLOCK; j++){
+            // printf("on inode num %d\n", j);
+            Inode* this_inode    = &new_inodeblock.Inodes[j];
+            this_inode->Valid    = 0;
+            this_inode->Size     = 0;
+            this_inode->Indirect = 0;
+            for (unsigned int k=0; k<POINTERS_PER_INODE; k++){
+                this_inode->Direct[k] = 0;
+            }
+        }
+        
+        disk_write(disk, i+1, new_inodeblock.Data);
+    }
+
+    // Other blocks deliberately left as is
+
     return true;
-    return false;
 }
 
 // FileSystem constructor 
