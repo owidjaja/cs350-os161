@@ -357,12 +357,67 @@ ssize_t fs_stat(FileSystem *fs, size_t inumber)
 ssize_t fs_read(FileSystem *fs, size_t inumber, char *data, size_t length, size_t offset)
 {
     // Load inode information
+    Inode found_inode;
+    if (!find_inode(fs, inumber, &found_inode)){
+        // printf("fail at find_inode\n");
+        return -1;
+    }
 
-    // Adjust length
+    // signed and unsigned comparison shouldk be ok since we have sanity check above
+    u_int32_t logical_size = found_inode.Size;
+    u_int16_t remaining_sz = logical_size - offset;
+    
+    // debug
+    // printf("\n");
+    // printf("length:       %lu\n", length);
+    // printf("offset:       %lu\n", offset);
+    // printf("logical size: %u \n", logical_size);
+    // printf("remaining_sz: %u \n", remaining_sz);
+
+
+    // fail conditions: no more data to read, or exceeded buffer length (8196)
+    if ((remaining_sz <= 0) | (offset >= length)){
+        // printf("fail at remaining_sz <= 0\n");
+        return -1;
+    }
 
     // Read block and copy to data
+    char buffer[BLOCK_SIZE];
+    size_t numbytes_read = 0;
+    int ptrnum = offset / BLOCK_SIZE;
     
-    return 0;
+    while (numbytes_read < length){
+        if (remaining_sz <= 0){
+            break;
+        }
+
+        // data reads
+        if (ptrnum < POINTERS_PER_INODE){
+            // read from direct
+            // printf("reading at direct block: %u\n", found_inode.Direct[ptrnum]);
+            disk_read(fs->disk, found_inode.Direct[ptrnum], buffer);
+            strncat(data, buffer, BLOCK_SIZE);
+            ptrnum++;
+        }
+        else{
+            // read from indirect
+            // printf("reading at indirect block:\n");
+            break;
+        }
+
+        // update counts
+        if (remaining_sz < BLOCK_SIZE){
+            numbytes_read += found_inode.Size;
+        }
+        else{
+            numbytes_read += BLOCK_SIZE;
+        }
+        offset += BLOCK_SIZE;
+        remaining_sz -= numbytes_read;
+    }
+
+    // printf("returning numbytes_read: %lu\n", numbytes_read);
+    return numbytes_read;
 }
 
 // Optional: the following helper function may be useful. 
